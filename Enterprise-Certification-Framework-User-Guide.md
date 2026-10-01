@@ -1,7 +1,7 @@
 # Enterprise Certification Framework — Complete User Guide
 
-**Version:** 2.0 · **Updated:** June 2026  
-**Framework Location:** `D:\claude\CompareSkill\`  
+**Version:** 2.1 · **Updated:** October 2026  
+**Repository:** https://github.com/dkpandeyps/migration-certification  
 **Skills Available:** `/discover-app` · `/application-certification` · `/migration-certification` · `/test-data-generator` · `/production-readiness-review` · `/generate-jira-bugs` · `/generate-pdf-report`
 
 ---
@@ -30,6 +30,7 @@
 20. [UI/UX Testing — What the Framework Catches](#20-uiux-testing--what-the-framework-catches)
 21. [Troubleshooting Common Issues](#21-troubleshooting-common-issues)
 22. [Quick Reference — All Parameters](#22-quick-reference--all-parameters)
+23. [Full Migration Sign-Off (`--full`) — Step by Step](#23-full-migration-sign-off---full--step-by-step)
 
 ---
 
@@ -40,6 +41,10 @@ the testing of web applications using a real browser (Playwright/Chromium). It d
 just take screenshots and compare layouts — it performs real CRUD operations, field
 validation tests, permission checks, and UI/UX quality checks with evidence captured at
 every step.
+
+**It works with any web application.** Nothing is tied to a particular product, page, or login. You give it a URL
+(a whole app, or one page with `scope=`), any login, and any number of roles; it discovers what is there and tests it.
+For a migration you give it the legacy URL and the new URL — they can be different hosts, frameworks, and URL structures.
 
 ### What "Certified" Means
 
@@ -90,6 +95,19 @@ Do you have an old system and a new system to compare?
 
 ## 3. Prerequisites & Setup
 
+### 3.0 Install the Skills
+
+Requirements: [Claude Code](https://claude.com/claude-code), git, [bun](https://bun.sh) 1.3+, Node.js 18+.
+
+```bash
+git clone https://github.com/dkpandeyps/migration-certification.git
+cd migration-certification
+./install.sh          # Windows PowerShell: .\install.ps1
+```
+
+The installer copies the 7 skills and the `shared/` reference docs into `~/.claude/skills/`. Restart Claude Code
+(or run `/reload`); the slash commands then work from any project. To update: `git pull`, then run the installer again.
+
 ### 3.1 Browse Binary
 
 All skills require the **paysec** toolkit's `browse` binary (Playwright-backed headless browser).
@@ -102,7 +120,7 @@ Check it is installed:
 
 If missing, install paysec first:
 ```
-! git clone <your-paysec-repo-url> ~/.claude/skills/paysec && cd ~/.claude/skills/paysec && ./setup
+! git clone https://github.com/dkpandeyps/paysec.git ~/.claude/skills/paysec && cd ~/.claude/skills/paysec && ./setup
 ```
 The binary must exist at:
 `~/.claude/skills/paysec/browser/dist/browse.exe` (Windows)
@@ -117,8 +135,8 @@ All session artifacts are written to:
 {your working directory}/certification-runs/{session-id}/
 ```
 
-Run your prompts from `D:\claude\CompareSkill\` or any directory where you want
-the `certification-runs/` folder to appear.
+Run your prompts from any directory where you want the `certification-runs/` folder to appear.
+Run output contains screenshots and data from the system under test — keep it out of shared git repos.
 
 ### 3.3 What You Need Before Starting
 
@@ -138,10 +156,25 @@ The minimum viable prompt for any certification:
 /application-certification url=https://your-app.com username=admin password=secret role=admin
 ```
 
-### Rule 2: Use `roles=` for multiple users in one run
+### Rule 2: Give every extra role a login — `roles_file=` (recommended) or `roles=`
 
-If you have multiple users to test in the same run, list them with `roles=` and
-provide their credentials separately in the prompt body:
+**Recommended — a roles file** kept outside any repo:
+```json
+{
+  "roles": {
+    "merchant": { "username": "merchant1", "password": "Merch@123", "expected": "view + edit own records, no delete" },
+    "support":  { "username": "support1",  "password": "Supp@123",
+                  "old_username": "support_legacy", "old_password": "Old@123" }
+  }
+}
+```
+```
+/application-certification url=https://app.com username=admin password=Admin@123 role=admin roles_file=D:/secure/roles.json
+```
+`old_username`/`old_password` are used on the legacy system in migrations. `expected` (optional) lets permission
+results be judged PASS/FAIL instead of only recorded. Every role in the file is tested — none is skipped.
+
+**Or inline**, listing roles with `roles=` and credentials as `{role}_username` / `{role}_password`:
 
 ```
 /application-certification url=https://app.com username=admin password=Admin@123 role=admin
@@ -166,6 +199,16 @@ Old and new systems often use different credential schemas. Always be explicit:
 ```
 /migration-certification old_url=https://old.app.com new_url=https://new.app.com
 old_username=admin old_password=OldPass@1 username=admin password=NewPass@1 role=admin
+```
+
+---
+
+### Rule 6: Use `scope=` to test one page or module completely
+
+`scope` limits the crawl to URL path prefixes; every page inside is still tested fully (tabs, dialogs, forms, row
+actions, APIs). For migrations use `old_scope` / `new_scope` when the same page has different paths:
+```
+/application-certification url=https://app.com/products username=admin password=Admin@123 role=admin scope=/products
 ```
 
 ---
@@ -505,6 +548,15 @@ dry_run=true --quick
 
 ### Role Parity Check Output
 
+Every role is certified on **both** systems and compared in Layer 5 (permission parity):
+
+| Legacy | New | Result |
+|---|---|---|
+| denied | allowed | `permission_escalation` — Critical, blocks go-live |
+| allowed | denied | `permission_loss` — High (Critical if the role's `expected` needs it) |
+| hidden in UI | direct URL still works | `permission_drift` — High |
+| logs in on one system only | | `role_login_mismatch` — Critical |
+
 For each role, the framework generates a role parity table:
 
 ```
@@ -553,10 +605,11 @@ username=merchant1@company.com password=Merch@123
 role=merchant --quick
 ```
 
-**Consolidated production readiness review after all three:**
+**Production readiness review — once per session** (each module gets its own verdict; all must PASS):
 ```
-/production-readiness-review
-session_path=certification-runs/20260611_auth_company_com,certification-runs/20260611_admin_company_com,certification-runs/20260611_merchant_company_com
+/production-readiness-review session_path=certification-runs/20260611_auth_company_com
+/production-readiness-review session_path=certification-runs/20260611_admin_company_com
+/production-readiness-review session_path=certification-runs/20260611_merchant_company_com
 ```
 
 ---
@@ -571,9 +624,9 @@ session_path=certification-runs/20260611_auth_company_com,certification-runs/202
 
 ### Approach
 
-Run `/discover-app` first to get the inventory, then run `/application-certification`
-with `session_path` pointing to the existing session — it will skip discovery and
-let you focus test data generation and testing on the specific forms/tables you specify.
+The simplest way is `scope=`: point `url` at the page and set `scope` to its path prefix. Only pages under the
+prefix are crawled, and each of them is tested completely. You can also reuse an earlier discovery with
+`session_path` so discovery is skipped.
 
 ### Example Prompts
 
@@ -699,6 +752,7 @@ session_path=certification-runs/20260611_migration_new_example_com
 | (no flag) | Core certification only | Daily development testing |
 | `--quick` | Same as no flag — explicitly skip review layer | Same as above, explicit intent |
 | `--final` | + paysec review (`/qa-report`, `/plan-tech-review`, `/plan-business-review`) + Jira + PDF | Official go/no-go decisions |
+| `--full` *(migration only)* | `--final` + every role on both systems + no dry run + completeness check (INCOMPLETE, no score, if anything was not tested) + readiness review of both systems | Migration sign-off — see Section 23 |
 
 ### Development Cycle Prompts
 
@@ -715,9 +769,7 @@ session_path=certification-runs/20260611_migration_new_example_com
 **Go-live sign-off — full certification + expert review + Jira + PDF:**
 ```
 /application-certification url=https://staging.example.com username=admin password=Staging@1 role=admin
-roles=merchant,support
-merchant_username=merch1 merchant_password=Merch@1
-support_username=sup1 support_password=Sup@1
+roles_file=D:/secure/roles.json
 --final
 ```
 
@@ -738,12 +790,12 @@ support_username=sup1 support_password=Sup@1
 /production-readiness-review session_path=certification-runs/20260611_142200_app_example_com
 ```
 
-**Run fresh certification + immediately review:**
+**Run a fresh certification, then the review, in one go** (`url` instead of `session_path`):
 ```
-/application-certification url=https://app.example.com username=admin password=Admin@123
-role=admin --final
+/production-readiness-review url=https://app.example.com username=admin password=Admin@123 role=admin
 ```
-(The `--final` flag invokes production readiness review automatically at the end.)
+(`/application-certification --final` adds the paysec review, Jira and PDFs but not this gate review — run it
+separately. `/migration-certification --final` / `--full` runs it on both systems automatically.)
 
 ### Hard Gates That Must ALL Pass
 
@@ -757,7 +809,12 @@ role=admin --final
 ✅ GATE_API_COV      — ≥ 80% of discovered endpoints called + status verified
 ✅ GATE_CRITICAL_DEFECTS — 0 critical defects
 ✅ GATE_EVIDENCE     — Every test result has ≥ 1 screenshot
+✅ GATE_ACKNOWLEDGED — Every waived (unreachable) item has a specific written justification
 ```
+
+UI/UX coverage counts **passing** checks: a failed UI/UX check fails `GATE_UIUX_COV` even if the defect is only
+Medium, unless it is acknowledged with a justification. Checks with nothing to inspect on a form (for example the
+empty-state check on a form with no list) are marked not applicable and left out of the count.
 
 **If ANY gate fails, verdict = FAIL. There is no partial pass.**
 
@@ -868,6 +925,22 @@ certification-runs/{session-id}/
 │                                  (migration runs: legacy vs new comparison + both full lists)
 │
 └── certification-result.json    ← Final verdict, score, gate evaluation
+```
+
+A **migration** run holds one such tree per system plus the comparison:
+
+```
+certification-runs/{session-id}/
+├── old/                         ← full certification tree for the legacy system
+├── new/                         ← full certification tree for the new system
+├── comparison/
+│   ├── completeness.json        ← did both sides test everything? (roles, forms, modules, coverage)
+│   ├── inventory-diff.json      ← pages / forms / workflows / APIs matched old → new
+│   └── behavioral-diff.json     ← 5 layers, incl. permission_differences per role
+├── migration-gap-report.json
+├── traceability-matrix.json / .md
+├── migration-score.json         ← score, recommendation, roles_compared, scope, completeness
+├── defects/  └── reports/
 ```
 
 ---
@@ -1067,6 +1140,18 @@ Phase 3b (UI/UX testing) was not run. This happens if:
 session_path=certification-runs/{session-id} --quick
 ```
 
+### "Migration status INCOMPLETE"
+
+The completeness check found something that was not tested on one side (a role, form, module, workflow, UI/UX
+check, or coverage file). Open `comparison/completeness.json` — `missing[]` lists each item. Fix the cause (usually
+a role login or an unreachable page) and re-run with `session_path` pointing at the same session; finished phases are
+skipped.
+
+### "NEEDS_CONTEXT: --full needs roles_file"
+
+`--full` tests every role, so it needs their logins. Pass `roles_file=` (or inline `roles=`), or confirm that the
+application has only one role. `--full` also refuses `dry_run=true`.
+
 ---
 
 ## 22. Quick Reference — All Parameters
@@ -1081,7 +1166,10 @@ session_path=certification-runs/{session-id} --quick
 | `login_mode` | enum | No | `form` | `form` / `cookie` / `script` |
 | `session_cookie` | string | No | — | Pre-auth cookie (cookie mode) |
 | `login_script_path` | string | No | — | Custom login instructions (script mode) |
-| `roles` | string | No | — | Comma-separated additional roles |
+| `roles_file` | path | No | — | JSON file with logins for additional roles |
+| `roles` | string | No | — | Inline alternative: `roles=a,b a_username=.. a_password=..` |
+| `scope` | string | No | — | Comma-separated URL path prefixes to stay inside |
+| `session_path` | path | No | — | Write into an existing session folder |
 | `resume` | bool | No | `false` | Resume from existing checkpoint |
 
 ### /application-certification
@@ -1095,7 +1183,9 @@ session_path=certification-runs/{session-id} --quick
 | `login_mode` | enum | No | `form` | `form` / `cookie` / `script` |
 | `dry_run` | bool | No | `false` | Skip destructive operations |
 | `test_delay_ms` | int | No | `500` | Delay between test submissions (ms) |
-| `roles` | string | No | — | Additional roles for permission testing |
+| `roles_file` | path | No | — | JSON file with logins for additional roles (all are tested) |
+| `roles` | string | No | — | Inline alternative to `roles_file` |
+| `scope` | string | No | — | Certify only pages under these path prefixes |
 | `session_path` | string | No | — | Resume existing session |
 | `--quick` | flag | No | — | Skip paysec review + Jira + PDF |
 | `--final` | flag | No | — | Enable all outputs (sign-off mode) |
@@ -1113,15 +1203,23 @@ session_path=certification-runs/{session-id} --quick
 | `role` | string | Yes | — | Primary role to certify |
 | `login_mode` | enum | No | `form` | Login mode for both systems |
 | `dry_run` | bool | No | `false` | Skip destructive operations |
-| `roles` | string | No | — | Additional roles |
+| `roles_file` | path | With `--full` | — | Logins for every other role; each is certified on both systems and compared |
+| `roles` | string | No | — | Inline alternative to `roles_file` |
+| `scope` | string | No | — | Path prefixes to certify on both systems |
+| `old_scope` / `new_scope` | string | No | `scope` | Per-system scope when paths differ |
+| `shared_db` | bool | No | `false` | Both systems share one database — adds cross-system data checks |
 | `--quick` | flag | No | — | Skip review + PDF |
 | `--final` | flag | No | — | Full output (sign-off mode) |
+| `--full` | flag | No | — | Full migration sign-off (Section 23) |
 
 ### /production-readiness-review
 
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| `session_path` | string | Yes | Path to existing certification session |
+| `session_path` | string | Yes* | Path to existing certification session |
+| `url`, `username`, `password`, `role` | string | Yes* | Run a fresh certification first, then review |
+
+*One of `session_path` or `url` (+ login) is required.
 
 ### /generate-jira-bugs
 
@@ -1133,6 +1231,57 @@ session_path=certification-runs/{session-id} --quick
 | `jira_project_key` | string | No | `$JIRA_PROJECT_KEY` env | Jira project key |
 | `jira_issue_type` | string | No | `Bug` | Issue type name |
 | `jira_labels` | string | No | `certification` | Comma-separated labels |
+
+---
+
+## 23. Full Migration Sign-Off (`--full`) — Step by Step
+
+Use this when a page, module, or whole app is ready to move from the legacy system to the new one and you need
+proof that **both** were tested completely, by **every** role.
+
+**Step 1 — Write the roles file** (outside any repo), one entry per role other than the primary login:
+```json
+{
+  "roles": {
+    "partner": { "username": "partner_qa", "password": "...", "expected": "view own products, no delete" },
+    "viewer":  { "username": "viewer_qa",  "password": "...", "old_username": "viewer_legacy", "old_password": "..." }
+  }
+}
+```
+
+**Step 2 — Use a test environment and test-only records.** `--full` performs real Add, Edit, and Delete on both
+systems. If both systems share one database, add `shared_db=true`: the run tags every record it creates with
+`CERT_{session}_`, runs the systems one after the other, and checks that data written on one reads the same on the other.
+
+**Step 3 — Run it:**
+```
+/migration-certification
+old_url=https://legacy.example.com/admin/productList   old_scope=/admin/product
+new_url=https://new.example.com/products               new_scope=/products
+username=admin password=<password> role=admin
+roles_file=D:/secure/roles.json
+shared_db=true
+--full
+```
+Leave out the scopes to certify the whole application.
+
+**Step 4 — What runs:**
+
+| # | Phase | On |
+|---|---|---|
+| 1 | Discovery (every page in scope, every role) | legacy, then new |
+| 2 | Inventory diff — pages, forms, workflows, APIs matched | both |
+| 3 | Full certification: field tests, CRUD, 9 UI/UX checks, workflows, permissions for every role | legacy, then new |
+| 4 | **Completeness check** — any untested role/form/module/workflow → re-run that part; still missing → INCOMPLETE, no score | both |
+| 5 | 5-layer comparison: pass/fail parity, validation messages, API shape, data state, per-role permission parity | both |
+| 6 | Gap report, traceability matrix, migration score and recommendation | — |
+| 7 | Production readiness review (10 gates) | new, and legacy for reference |
+| 8 | Business review, Jira bugs, 7 PDF reports | — |
+
+**Step 5 — Read the result:** start with `reports/executive-summary.pdf` (completeness, score, recommendation),
+then `defect-report.pdf`, the permission parity table in `functional-testing.pdf`, and `test-case-register.pdf` for
+every individual test on both systems. Go live only on `PROCEED` (or `PROCEED_WITH_CONDITIONS` with the listed
+conditions accepted) **and** a PASS from the new system's readiness review.
 
 ---
 
@@ -1163,13 +1312,15 @@ Where:
   equivalent_features = features in old system that have a working equivalent in new system
   total_old_features  = pages + forms + workflows in old system
 
+INCOMPLETE             = either system failed the completeness check (checked first; no score in --full)
 PROCEED                = score ≥ 100% AND no missing features AND no critical regressions
 PROCEED_WITH_CONDITIONS = score ≥ 90% AND no critical gaps
 HOLD                   = score < 90% OR any critical gap OR any critical regression
+                         (critical gaps include permission_escalation and role_login_mismatch)
 ```
 
 ---
 
-*Enterprise Certification Framework | D:\claude\CompareSkill*  
+*Enterprise Certification Framework | https://github.com/dkpandeyps/migration-certification*  
 *Skills: /discover-app · /application-certification · /migration-certification*  
 *· /test-data-generator · /production-readiness-review · /generate-jira-bugs · /generate-pdf-report*
