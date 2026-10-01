@@ -1,0 +1,19 @@
+# Run output — contains screenshots, API logs and data from the systems under test
+certification-runs/
+
+# Role credential files (see shared/browse-integration.md → Role Credentials File)
+roles.json
+*roles*.json
+.env
+.env.*
+
+# Local tool state
+.paysec/
+.claude/settings.local.json
+.gstack/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+node_modules/
