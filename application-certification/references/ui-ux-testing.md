@@ -456,5 +456,5 @@ use `passed_checks / total_checks` (see `shared/coverage-tracker.md`).
 
 Output summary line:
 ```
-UI/UX 'Create Bank' form: 8/9 checks passed — 1 High defect: No field highlighting on validation failure
+UI/UX 'Create Product' form: 8/9 checks passed — 1 High defect: No field highlighting on validation failure
 ```

@@ -33,7 +33,7 @@ fi
 ```
 
 **Password fields:** some target apps have a visible
-`input#floatingPassword` and a hidden `input[name=password]`. Always fill `input#floatingPassword` or `input[type=password]`.
+password input and a hidden input also named `password`. Always fill the visible `input[type=password]` (from the snapshot), never `input[name=password]` alone.
 
 ---
 

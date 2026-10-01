@@ -140,7 +140,7 @@ At the end of any certification phase, calculate and write `coverage/` directory
 
 Write one file per dimension: `page-coverage.json`, `form-coverage.json`, `field-coverage.json`, `ui-ux-coverage.json`, `workflow-coverage.json`, `permission-coverage.json`, `api-coverage.json`.
 
-For `ui-ux-coverage.json`, `total`/`covered` count checks (not forms), and each `not_covered_items[]` entry is one failed or unrun check: `{"id": "form_003:field_highlight_on_error", "name": "Create Bank — Field highlight on error", "reason": "No field highlighted after invalid submit"}`.
+For `ui-ux-coverage.json`, `total`/`covered` count checks (not forms), and each `not_covered_items[]` entry is one failed or unrun check: `{"id": "form_003:field_highlight_on_error", "name": "Create Product — Field highlight on error", "reason": "No field highlighted after invalid submit"}`.
 
 ---
 

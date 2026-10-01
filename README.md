@@ -147,7 +147,7 @@ Log in manually once, copy the session cookie from browser DevTools, and pass it
 
 ### 7. Full migration certification (both systems, every role, nothing skipped)
 ```
-/migration-certification old_url=https://legacy.myapp.com/admin/banks new_url=https://new.myapp.com/banks old_scope=/admin/banks new_scope=/banks username=admin password=secret role=admin roles_file=D:/secure/roles.json shared_db=true --full
+/migration-certification old_url=https://legacy.myapp.com/admin/products new_url=https://new.myapp.com/products old_scope=/admin/products new_scope=/products username=admin password=secret role=admin roles_file=D:/secure/roles.json shared_db=true --full
 ```
 `roles.json` holds each extra role's login (format in `shared/browse-integration.md → Role Credentials File`).
 `--full` refuses to run without it (or without confirmation that there is only one role), refuses `dry_run=true`,

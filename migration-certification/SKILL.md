@@ -35,7 +35,7 @@ allowed-tools:
 >
 > This skill MUST be invoked as `/migration-certification` with its full phase pipeline. If login is complex (captcha, SSO, wrong field selectors), resolve it first using `login_mode=cookie` or fix the selector — then run this skill. Do not substitute manual browsing as a workaround.
 >
-> **Password field selector known issue:** Some apps have two password-related inputs — a visible `type=password id=floatingPassword` AND a hidden `type=hidden name=password`. Always use `input[id=floatingPassword]` or `input[type=password]`, never `input[name=password]`.
+> **Password field tip:** some login pages have a visible password input AND a hidden input that is also named `password`. Always fill the visible `input[type=password]` (found via the snapshot), never a selector by `name=password` alone.
 
 Fully certifies the legacy system and the new system one after the other — every page in scope, every form and field, CRUD, UI/UX, workflows, and every role — then performs a 5-layer behavioral comparison (including per-role permission parity) to find missing features, functional regressions, access-control changes, and behavioral drift. Outputs a migration score, gap report, and traceability matrix.
 
@@ -66,7 +66,7 @@ Fully certifies the legacy system and the new system one after the other — eve
 ```
 /migration-certification old_url=https://legacy.example.com new_url=https://new.example.com username=admin password=secret role=admin
 /migration-certification old_url=https://legacy.example.com new_url=https://new.example.com username=admin password=secret role=admin --final
-/migration-certification old_url=https://legacy.example.com/admin/globalMidRule new_url=https://new.example.com/global-mid-rule old_scope=/admin/globalMidRule new_scope=/global-mid-rule username=admin password=secret role=admin roles_file=./roles.json shared_db=true --full
+/migration-certification old_url=https://legacy.example.com/admin/productList new_url=https://new.example.com/products old_scope=/admin/product new_scope=/products username=admin password=secret role=admin roles_file=./roles.json shared_db=true --full
 ```
 
 ---

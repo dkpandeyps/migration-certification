@@ -35,7 +35,7 @@ Crawls any web application using Playwright-backed browser automation to produce
 | `roles` | No | — | Inline alternative to `roles_file`: `roles=merchant,support merchant_username=.. merchant_password=.. support_username=.. support_password=..` (add `{role}_old_username` / `{role}_old_password` for a different legacy login). Treated exactly like `roles_file` |
 | `roles_file` | No | — | JSON file with credentials for additional roles (format in `shared/browse-integration.md → Role Credentials File`). Every role in it gets its own discovery pass |
 | `role_side` | No | `new` | `legacy` makes every role use its `old_username`/`old_password` from the roles file (falls back to `username`/`password`). Set by `/migration-certification` |
-| `scope` | No | — | Comma-separated URL path prefixes to stay inside (e.g. `/admin/globalMidRule,/admin/midRule`). Pages outside scope are recorded from the nav but not crawled. Omit to crawl the whole app |
+| `scope` | No | — | Comma-separated URL path prefixes to stay inside (e.g. `/admin/products,/admin/categories`). Pages outside scope are recorded from the nav but not crawled. Omit to crawl the whole app |
 | `session_path` | No | — | Write into this existing session directory instead of creating a new one (used by the orchestrator skills) |
 | `resume` | No | `false` | `true` to resume from an existing checkpoint |
 
@@ -44,7 +44,7 @@ Crawls any web application using Playwright-backed browser automation to produce
 ```
 /discover-app url=https://app.example.com username=admin password=secret123
 /discover-app url=https://app.example.com username=admin password=secret123 roles_file=./roles.json
-/discover-app url=https://app.example.com/admin/banks username=admin password=secret123 scope=/admin/banks
+/discover-app url=https://app.example.com/admin/products username=admin password=secret123 scope=/admin/products
 /discover-app url=https://app.example.com login_mode=cookie session_cookie="sessionId=abc123"
 ```
 

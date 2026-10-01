@@ -328,9 +328,9 @@ support_username=support1 support_password=Support@123
 **Four roles with dry_run (no deletions across any role):**
 ```
 /application-certification url=https://payments.example.com
-username=superadmin password=SuperAdmin@1 role=super_admin
-roles=whitelabel,merchant,viewer
-whitelabel_username=wl_user1 whitelabel_password=WL@pass1
+username=superadmin password=SuperAdmin@1 role=admin
+roles=partner,merchant,viewer
+partner_username=partner_user1 partner_password=Partner@pass1
 merchant_username=merchant_user merchant_password=Merch@pass1
 viewer_username=view_only viewer_password=View@pass1
 dry_run=true --quick
@@ -409,7 +409,7 @@ old_url=https://legacy.example.com
 new_url=https://new.example.com
 old_username=<your-username> old_password=<your-password>
 username=<your-username> password=<your-password>
-role=super_admin
+role=admin
 --quick
 ```
 
@@ -427,11 +427,12 @@ dry_run=true --quick
 **Migration check scoped to a specific section of the app** (by providing the old and new sub-URLs):
 ```
 /migration-certification
-old_url=https://old.example.com/admin/getAllPaymentBank
-new_url=https://new.example.com/banks/all-banks
+old_url=https://legacy.example.com/admin/productList
+new_url=https://new.example.com/products
+old_scope=/admin/product new_scope=/products
 old_username=<your-username> old_password=<your-password>
 username=<your-username> password=<your-password>
-role=super_admin
+role=admin
 --quick
 ```
 
@@ -441,14 +442,14 @@ role=super_admin
 MIGRATION SCORE: 83/100 — HOLD
 
 Missing features (in old, not in new):
-  🔴 CRITICAL: Bank Response Mappings (/admin/getAllBankResponseMapping)
+  🔴 CRITICAL: Price History page (/admin/productPriceHistory)
   
 Functional regressions (old passed, new fails):
-  🔴 CRITICAL: Add MID — HTTP 400 DB error on new system
+  🔴 CRITICAL: Add Product Variant — HTTP 400 error on new system
 
 Behavioral drifts (both pass but behavior differs):
-  ⚠️  Active/Inactive bank count: old=361/41, new=362/40
-  ⚠️  Search scope: old supports Bank ID search, new is name-only
+  ⚠️  Active/Inactive product count differs between old and new list
+  ⚠️  Search scope: old supports search by SKU, new is name-only
 
 New features in new system (informational):
   ℹ️  Inline modal forms replace page navigation
@@ -468,35 +469,35 @@ New features in new system (informational):
 
 - You are migrating an application that has role-based access
 - You need to confirm that the new system enforces the same role permissions as the old
-- You want to verify that a whitelabel/merchant user sees the same restricted view on both systems
+- You want to verify that a restricted user (partner, customer, viewer) sees the same restricted view on both systems
 
 ### Example Prompts
 
-**Migration check: Super Admin + Whitelabel roles:**
+**Migration check: Admin + Partner roles:**
 ```
 /migration-certification
 old_url=https://legacy.example.com
 new_url=https://new.example.com
 old_username=<your-username> old_password=<your-password>
 username=<your-username> password=<your-password>
-role=super_admin
-roles=whitelabel
-old_whitelabel_username=<whitelabel-username> old_whitelabel_password=<whitelabel-password>
-whitelabel_username=<whitelabel-username> whitelabel_password=<whitelabel-password>
+role=admin
+roles=partner
+old_partner_username=<partner-username> old_partner_password=<partner-password>
+partner_username=<partner-username> partner_password=<partner-password>
 --quick
 ```
 
 **Three-role migration with dry_run:**
 ```
 /migration-certification
-old_url=https://legacy-bank.example.com
-new_url=https://new-bank.example.com
+old_url=https://legacy.example.com
+new_url=https://new.example.com
 old_username=sa_user old_password=SA@Pass1
 username=sa_user password=SA@Pass1
-role=super_admin
-roles=whitelabel,merchant
-old_whitelabel_username=wl1 old_whitelabel_password=WL@Pass1
-whitelabel_username=wl1 whitelabel_password=WL@Pass1
+role=admin
+roles=partner,merchant
+old_partner_username=partner1 old_partner_password=Partner@Pass1
+partner_username=partner1 partner_password=Partner@Pass1
 old_merchant_username=merch1 old_merchant_password=Merch@Pass1
 merchant_username=merch1 merchant_password=Merch@Pass1
 dry_run=true --quick
@@ -507,11 +508,11 @@ dry_run=true --quick
 For each role, the framework generates a role parity table:
 
 ```
-Role: whitelabel
-  Old URL → Banks visible: 1 (hdfc dkp)       New URL → Banks visible: 1 (hdfc dkp) ✅
-  Old URL → Add Bank: ❌ hidden                New URL → Add Bank: ❌ hidden          ✅
-  Old URL → Delete: ❌ hidden                  New URL → Delete: ❌ hidden             ✅
-  Old URL → MID row actions: 2                New URL → MID row actions: 6            ℹ️ New has more
+Role: partner
+  Old URL → Products visible: 3 (own only)    New URL → Products visible: 3 (own only) ✅
+  Old URL → Add Product: ❌ hidden             New URL → Add Product: ❌ hidden          ✅
+  Old URL → Delete: ❌ hidden                  New URL → Delete: ❌ hidden               ✅
+  Old URL → Variant row actions: 2            New URL → Variant row actions: 6          ℹ️ New has more
 ```
 
 ---
@@ -582,10 +583,10 @@ let you focus test data generation and testing on the specific forms/tables you 
 ```
 Note the session path from the output: `certification-runs/20260611_142200_app_example_com`
 
-**Then — certify only the banks module (by targeting its page URL directly):**
+**Then — certify only one module (by targeting its page URL and scope):**
 ```
-/application-certification url=https://app.example.com/banks/all-banks
-username=admin password=Admin@123 role=admin
+/application-certification url=https://app.example.com/products
+username=admin password=Admin@123 role=admin scope=/products
 session_path=certification-runs/20260611_142200_app_example_com
 --quick
 ```
@@ -599,8 +600,8 @@ username=admin password=Admin@123 role=admin --quick
 **Or re-run only the UI/UX checks on a specific page after a fix:**
 ```
 Please run only the UI/UX testing phase (Phase 3b from application-certification/references/ui-ux-testing.md)
-on the form at https://app.example.com/banks/add-bank using username=admin password=Admin@123.
-Save results to certification-runs/20260611_banks_uiux_recheck/
+on the form at https://app.example.com/products/add using username=admin password=Admin@123.
+Save results to certification-runs/20260611_products_uiux_recheck/
 ```
 
 ---
@@ -913,7 +914,7 @@ These are show-stoppers. Even one Critical defect = FAIL verdict.
 |---------------|--------------|
 | Submit button stays disabled after valid form fill | Users cannot complete the form |
 | Field not highlighted on validation error | Users cannot identify which field to fix |
-| Add MID returns HTTP 400 DB error | Feature non-functional on the backend |
+| Add Variant returns HTTP 400 error | Feature non-functional on the backend |
 | Edit form shows success but data reverts on reload | Data not persisted |
 
 ### Medium — Should be fixed; document as known issue if deferred
@@ -950,7 +951,7 @@ check looks for and why it matters:
 
 **What:** Button is appropriately disabled on blank form; enables when all required fields are validly filled.  
 **Why:** If the button never enables after valid fill, the user is stuck with no feedback.  
-**Example defect:** "Add Bank form: Confirm button stays disabled after all required fields are filled with valid data."
+**Example defect:** "Add Product form: Save button stays disabled after all required fields are filled with valid data."
 
 ### Check 4 — Stuck Form Diagnosis
 
@@ -980,13 +981,13 @@ check looks for and why it matters:
 
 **What:** Search/filter results that return zero items show a human-readable message.  
 **Why:** A blank table with no message looks like a loading error or a bug.  
-**Example defect:** "Bank list shows blank page when search returns no results — no 'No banks found' message."
+**Example defect:** "Product list shows blank page when search returns no results — no 'No products found' message."
 
 ### Check 9 — Disabled Field Clarity
 
 **What:** Read-only fields look different from editable fields.  
 **Why:** In a view-only edit dialog, if disabled fields look identical to editable ones, users try to edit them and are confused when nothing happens.  
-**Example defect:** "WL Edit Bank dialog: disabled fields have same white background and cursor as editable fields — visually indistinguishable."
+**Example defect:** "Edit Product dialog: disabled fields have same white background and cursor as editable fields — visually indistinguishable."
 
 ---
 

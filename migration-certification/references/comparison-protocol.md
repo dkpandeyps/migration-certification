@@ -204,7 +204,7 @@ A role that logged in on one system but failed to log in on the other is recorde
       "id": "BD_010",
       "layer": 5,
       "role": "merchant",
-      "resource": "Global MID Rule → Delete",
+      "resource": "Products → Delete",
       "old_access": "denied",
       "new_access": "allowed",
       "gap_type": "permission_escalation",

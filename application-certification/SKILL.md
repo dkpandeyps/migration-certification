@@ -60,7 +60,7 @@ Runs a complete, evidence-backed certification of a web application. Discovers a
 /application-certification url=https://app.example.com username=admin password=secret role=admin --final
 /application-certification url=https://app.example.com username=admin password=secret role=admin dry_run=true --quick
 /application-certification url=https://app.example.com username=admin password=secret role=admin roles_file=./roles.json --final
-/application-certification url=https://app.example.com/admin/banks username=admin password=secret role=admin scope=/admin/banks roles_file=./roles.json --final
+/application-certification url=https://app.example.com/admin/products username=admin password=secret role=admin scope=/admin/products roles_file=./roles.json --final
 ```
 
 ---
